@@ -8,7 +8,7 @@ def test_highway_env():
     环境的输入（动作）在范围内随机生成。
     """
     # 创建环境
-    env = gym.make('highway-v0', render_mode='human')  # 启用渲染以显示界面
+    env = gym.make('highway-v0', render_mode='human')  # 启用渲染以显示界面ß
 
     # 重置环境，获取初始观察
     obs, info = env.reset()
