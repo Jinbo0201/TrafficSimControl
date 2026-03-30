@@ -76,6 +76,12 @@ def _register_highway_envs():
         entry_point="highway_env.envs.merge_env:MergeEnv",
     )
 
+    # merge_auto_env.py
+    register(
+        id="merge-auto-v0",
+        entry_point="highway_env.envs.merge_auto_env:MergeAutoEnv",
+    )
+
     # parking_env.py
     register(
         id="parking-v0",
