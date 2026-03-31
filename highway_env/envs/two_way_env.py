@@ -118,7 +118,7 @@ class TwoWayEnv(AbstractEnv):
         """
         road = self.road
         ego_vehicle = self.action_type.vehicle_class(
-            road, road.network.get_lane(("a", "b", 1)).position(30.0, 0.0), speed=30.0
+            road, road.network.get_lane(("a", "b", 1)).position(30.0, 0.0), speed=20.0
         )
         road.vehicles.append(ego_vehicle)
         self.vehicle = ego_vehicle

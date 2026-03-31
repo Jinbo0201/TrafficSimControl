@@ -12,9 +12,11 @@ from highway_env.vehicle.objects import Obstacle
 
 class MergeTestEnv(AbstractEnv):
     """
-    我在原先场景的基础上进行来修改
-    首先不存在所谓的控制车辆，而且所有车辆都是自由驾驶的，且不受任何控制
-    其次，奖励函数先不进行定义
+    A highway merge negotiation environment.
+
+    The ego-vehicle is driving on a highway and approached a merge, with some vehicles incoming on the access ramp.
+    It is rewarded for maintaining a high speed and avoiding collisions, but also making room for merging
+    vehicles.
     """
 
     @classmethod
@@ -33,17 +35,48 @@ class MergeTestEnv(AbstractEnv):
         return cfg
 
     def _reward(self, action: int) -> float:
-        """简单固定 reward 机制：不依赖状态或动作，统一返回 0.5."""
-        return 0.5
+        """
+        The vehicle is rewarded for driving with high speed on lanes to the right and avoiding collisions
+
+        But an additional altruistic penalty is also suffered if any vehicle on the merging lane has a low speed.
+
+        :param action: the action performed
+        :return: the reward of the state-action transition
+        """
+        reward = sum(
+            self.config.get(name, 0) * reward
+            for name, reward in self._rewards(action).items()
+        )
+        return utils.lmap(
+            reward,
+            [
+                self.config["collision_reward"] + self.config["merging_speed_reward"],
+                self.config["high_speed_reward"] + self.config["right_lane_reward"],
+            ],
+            [0, 1],
+        )
 
     def _rewards(self, action: int) -> dict[str, float]:
-        """简单固定 rewards：总是返回固定值。"""
-        return {"fixed_reward": 0.5}
-
+        scaled_speed = utils.lmap(
+            self.vehicle.speed, self.config["reward_speed_range"], [0, 1]
+        )
+        return {
+            "collision_reward": self.vehicle.crashed,
+            "right_lane_reward": self.vehicle.lane_index[2] / 1,
+            "high_speed_reward": scaled_speed,
+            "lane_change_reward": action in [0, 2],
+            "merging_speed_reward": sum(  # Altruistic penalty
+                (vehicle.target_speed - vehicle.speed) / vehicle.target_speed
+                for vehicle in self.road.vehicles
+                if vehicle.lane_index == ("b", "c", 2)
+                and isinstance(vehicle, ControlledVehicle)
+            ),
+        }
 
     def _is_terminated(self) -> bool:
         """The episode is over when a collision occurs or when the access ramp has been passed."""
-        return False
+        print("检查是否终止：", self.vehicle.crashed, self.vehicle.position[0])
+        return self.vehicle.crashed or bool(self.vehicle.position[0] > 370)
 
     def _is_truncated(self) -> bool:
         return False
@@ -122,14 +155,16 @@ class MergeTestEnv(AbstractEnv):
 
     def _make_vehicles(self) -> None:
         """
-        主要是对这一块的内容进行修改，线路并没有进行修改
+        Populate a road with several vehicles on the highway and on the merging lane, as well as an ego-vehicle.
+
+        :return: the ego-vehicle
         """
         road = self.road
-
-        # ego_vehicle = self.action_type.vehicle_class(
-        #     road, road.network.get_lane(("a", "b", 1)).position(30.0, 0.0), speed=30.0
-        # )
-        # road.vehicles.append(ego_vehicle)
+        ego_vehicle = self.action_type.vehicle_class(
+            road, road.network.get_lane(("a", "b", 1)).position(10.0, 0.0), speed=10.0
+        )
+        ego_vehicle.target_speed = 10.0
+        road.vehicles.append(ego_vehicle)
 
         other_vehicles_type = utils.class_from_path(self.config["other_vehicles_type"])
 
@@ -144,8 +179,5 @@ class MergeTestEnv(AbstractEnv):
         )
         merging_v.target_speed = 30.0
         road.vehicles.append(merging_v)
-        # self.vehicle = ego_vehicle
 
-        # 设置观察者车辆，避免观察逻辑报错
-        if self.road.vehicles:
-            self.observation_type.observer_vehicle = self.road.vehicles[0]
+        self.vehicle = ego_vehicle
