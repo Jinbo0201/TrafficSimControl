@@ -65,16 +65,16 @@ def test_new():
         road.vehicles.append(v)
         return v
 
-    add_car(("a", "b", 1), 30.0, 10.0, target_speed=25.0)
-    add_car(("a", "b", 1), 70.0, 20.0)
-    add_car(("a", "b", 1), 110.0, 18.0)
-    add_car(("b", "a", 0), 200.0, 15.0)
-    add_car(("b", "a", 0), 300.0, 22.0)
+    add_car(("a", "b", 0), 0.0, 20.0)
+    # add_car(("a", "b", 1), 70.0, 20.0)
+    # add_car(("a", "b", 1), 110.0, 18.0)
+    # add_car(("a", "b", 0), 170.0, 15.0)
+    # add_car(("a", "b", 0), 250.0, 22.0)
 
     # 3) 可视化准备
     sim_fps = 15
     dt = 1.0 / sim_fps
-    max_steps = 150
+    max_steps = 500
 
     fig, ax = plt.subplots(figsize=(10, 4))
     plt.ion()
@@ -82,6 +82,10 @@ def test_new():
     for step in range(max_steps):
         road.act()
         road.step(dt)
+
+        if step % 50 == 49:
+            add_car(("a", "b", 0), 0.0, 20.0)
+
 
         xs = [v.position[0] for v in road.vehicles]
         ys = [v.position[1] for v in road.vehicles]
