@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import random  # 修改: 导入 random 模块用于生成随机目标速度
 
 from highway_env.road.road import Road, RoadNetwork
 from highway_env.road.lane import StraightLane, LineType
@@ -8,18 +9,19 @@ from highway_env.vehicle.behavior import IDMVehicle
 
 
 def test_new():
-    """直接构造 two-way 路网＋IDM车辆，逐步推理仿真并可视化。"""
+    """直接构造 two-way 路网＋IDM 车辆，逐步推理仿真并可视化。"""
 
     # 1) 建路网（两车道双向整段）
     net = RoadNetwork()
-    length = 800
+    length = 1800
     width = StraightLane.DEFAULT_WIDTH
 
     net.add_lane(
         "a",
         "b",
         StraightLane(
-            [0, 0], [length, 0], line_types=(LineType.CONTINUOUS_LINE, LineType.STRIPED)
+            [0, 0], [length, 0], line_types=(LineType.CONTINUOUS_LINE, LineType.STRIPED),
+            speed_limit=40.0  # 修改: 显式设置车道限速，确保高于车辆目标速度，防止底层限制
         ),
     )
     net.add_lane(
@@ -29,13 +31,15 @@ def test_new():
             [0, width],
             [length, width],
             line_types=(LineType.NONE, LineType.CONTINUOUS_LINE),
+            speed_limit=40.0  # 修改: 显式设置车道限速
         ),
     )
     net.add_lane(
         "b",
         "a",
         StraightLane(
-            [length, 0], [0, 0], line_types=(LineType.NONE, LineType.NONE)
+            [length, 0], [0, 0], line_types=(LineType.NONE, LineType.NONE),
+            speed_limit=40.0  # 修改: 显式设置车道限速
         ),
     )
     net.add_lane(
@@ -45,6 +49,7 @@ def test_new():
             [length, width],
             [0, width],
             line_types=(LineType.NONE, LineType.NONE),
+            speed_limit=40.0  # 修改: 显式设置车道限速
         ),
     )
 
@@ -59,13 +64,15 @@ def test_new():
             pos,
             heading=lane.heading_at(s),
             speed=speed,
+            # 若未指定 target_speed，则默认等于当前速度；建议显式设定以控制期望行为
             target_speed=target_speed if target_speed is not None else speed,
             target_lane_index=lane_index,
         )
         road.vehicles.append(v)
         return v
 
-    add_car(("a", "b", 0), 0.0, 20.0)
+    # 主车：初始位置 0，速度 30，目标速度设为 30 (保持匀速)
+    add_car(("a", "b", 0), 0.0, 30.0, 30.0)
     # add_car(("a", "b", 1), 70.0, 20.0)
     # add_car(("a", "b", 1), 110.0, 18.0)
     # add_car(("a", "b", 0), 170.0, 15.0)
@@ -83,8 +90,10 @@ def test_new():
         road.act()
         road.step(dt)
 
-        if step % 50 == 49:
-            add_car(("a", "b", 0), 0.0, 20.0)
+        if step % 50 == 25:
+            # 修改：动态加车时，target_speed 在 20-40 区间内随机生成
+            random_target_speed = random.uniform(20, 40)
+            add_car(("a", "b", 0), 0.0, 10.0, target_speed=random_target_speed)
 
 
         xs = [v.position[0] for v in road.vehicles]
