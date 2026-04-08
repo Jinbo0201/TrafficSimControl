@@ -187,6 +187,21 @@ class IDMVehicle(ControlledVehicle):
             acceleration -= self.COMFORT_ACC_MAX * np.power(
                 self.desired_gap(ego_vehicle, front_vehicle) / utils.not_zero(d), 2
             )
+
+        # ================= 红绿灯停车逻辑 =================
+        if hasattr(self.road, "traffic_lights"):
+            for tl in self.road.traffic_lights:
+                # 计算车到红绿灯的距离
+                dx = self.position[0] - tl.position[0]
+                dy = self.position[1] - tl.position[1]
+                dist = (dx**2 + dy**2)**0.5
+
+                # 红灯 + 距离近 → 停车
+                if tl.is_red() and 0 < dx < 25 and abs(dy) < 5:
+                    acceleration =  -self.MAX_ACCELERATION
+        # ==================================================
+
+            
         return acceleration
 
     def desired_gap(
